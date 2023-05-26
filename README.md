@@ -1,7 +1,8 @@
 # Analysis-Instructions-for-CHART
 To take the raw data we have collected and turn it into a rotation curve, we will have to run the data through some code. 
 
-Step 1: Import package -We need to import a few packages so that python can perform certain mathematical and visual functions. 
+Step 1: Import package  
+We need to import a few packages so that python can perform certain mathematical and visual functions. 
 
 
 
