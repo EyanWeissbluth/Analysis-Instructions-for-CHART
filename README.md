@@ -95,3 +95,54 @@ To visulise the data we have collected, we will make a plot. Each plot will corr
     
     plt.ylim(30,45)
     plt.xlabel('Frequency [GHz]')
+
+Step 4: Bandpass Calibration   
+Now we need to apply the Bandpass filter to our scan so we can isolate the wavelengths we want to observe.   
+
+    ntrials = len(paths)
+    data = []
+    mdata = []
+    bps= []
+    spectra = [[] for _ in range(ntrials)]
+    freqs = [[] for _ in range(ntrials)]
+
+    for i in range(ntrials):
+        d, m = chart.analysis.read_run(directory=data_dir + paths[i])
+        d = np.array(d)
+        data.append(d)
+        mdata.append(m)
+        nchans = m[0]['vector_length']
+        nremove = nchans // 32
+    for i in range(ntrials):
+        d, m = chart.analysis.read_run(directory=data_dir + paths[i])
+        d = np.array(d)
+        data.append(d)
+        mdata.append(m)
+        # Rough estimate for bandpass
+        nchans = m[0]['vector_length']
+        levels = np.median(d[:, :, nchans // 4:(-nchans // 4)], axis=(1, 2))
+        rescaled = d / levels.reshape(-1, 1, 1)
+        bp = np.median(rescaled, axis=(0, 1))
+        bps.append(bp)
+    
+    for j in range(ntrials):
+        for d, m in zip(data[j], mdata[j]):
+            spectrum = np.mean(d, axis=0) / bps[j]
+            spectrum = spectrum[nremove:-nremove]
+            spectrum = 10 * np.log10(spectrum)
+            frequencies = ((np.arange(m['vector_length']) - m['vector_length'] / 2)
+                               * m['samp_rate'] / m['vector_length'] + m['frequency'])
+            frequencies = 1e-9 * frequencies[nremove:-nremove]
+            spectra[j].append(spectrum)
+            freqs[j].append(frequencies)
+
+        for k in range(len(spectra[j]) - 1):
+            spec1 = spectra[j][k]
+            spec2 = spectra[j][k + 1]
+            freq1 = freqs[j][k]
+            freq2 = freqs[j][k + 1]
+            ncommon = np.sum([1 if f in freq2 else 0 for f in freq1])
+            spec2 += np.median(spec1[-ncommon:]) - np.median(spec2[:ncommon])
+            spectra[j][k + 1] = spec2  
+            
+Step 5: Flagging out Radio Frequencey Interference  
