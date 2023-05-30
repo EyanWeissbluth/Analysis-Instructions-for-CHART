@@ -146,3 +146,55 @@ Now we need to apply the Bandpass filter to our scan so we can isolate the wavel
             spectra[j][k + 1] = spec2  
             
 Step 5: Flagging out Radio Frequencey Interference  
+To mark out the RFI, we flag it with the code below.  
+
+    smoothed = []
+    zscores = []
+    mask = []
+    kern = 25
+    footprint = np.ones(2 * kern + 1)
+    footprint[kern] = 0
+
+    for data in spectra[1]:
+    
+        data = np.concatenate([data[kern - 1::-1], data, data[:-kern - 1:-1]])
+        d_sm = median_filter(data.real, footprint=footprint)
+        d_rs = data - d_sm
+        d_sq = np.abs(d_rs)**2
+        # Factor of .456 is to put mod-z scores on same scale as standard deviation.
+        sig = np.sqrt(median_filter(d_sq, footprint=footprint) / .456)
+        zscore = (d_rs / sig)[kern:-kern]
+        smoothed.append(d_sm[kern:-kern])
+        zscores.append(zscore)
+        mask.append(zscore > 1.5)  
+
+Now lets plot it.  
+
+    plt.figure(figsize=(12,10))
+
+    for i, spec in enumerate(spectra[1]):
+        if i == 0:
+            plt.plot(freqs[1][i], spec, color='C1', label='Data')
+            plt.plot(freqs[1][i], np.ma.masked_array(spec, mask[i]), color='C2', label='Masked Data')
+        else:
+            plt.plot(freqs[1][i], spec, color='C1')
+            plt.plot(freqs[1][i], np.ma.masked_array(spec, mask[i]), color='C2')
+        plt.legend()
+
+Finally lets plot just the masked spectrum.  
+
+    plt.figure(figsize=(10,12))
+    j = 1
+    for k in range(len(freqs[j])):
+        data = np.ma.masked_array(spectra[j][k], mask[k])
+        if k == 0:
+            plt.plot(freqs[j][k], data, 'C' + str(j), label='Masked Data')
+        else:
+            plt.plot(freqs[j][k], data, 'C' + str(j))
+    plt.ylabel('[dB]')
+    plot_f0(lims=(37.2,37.8))
+    plt.legend()
+    plt.xlabel('Frequency [GHz]')
+    plt.xlim([1.419, 1.422])
+    
+Step 6:    
